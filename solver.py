@@ -111,6 +111,7 @@ def recommend_shifts(shift_types: list[tuple[dt.time, dt.time, int]], requiremen
     model.Minimize(2*total_squared_understaff + total_squared_overstaff)
 
     solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = 30
     var_printer = cp_model.VarArraySolutionPrinter([total_understaff, total_overstaff])
     status = solver.Solve(model, var_printer)
     if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
@@ -126,3 +127,5 @@ def recommend_shifts(shift_types: list[tuple[dt.time, dt.time, int]], requiremen
                     (shift_subtypes[i][2], shift_subtypes[i][3], days_off)  # start_time, end_time, days_off
                 )
         return staffed, selected_shifts
+    else:
+        return None, None

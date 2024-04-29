@@ -6,6 +6,7 @@ import solver
 
 HOURS_IN_DAY = 24
 DAYS_IN_WEEK = 7
+start_date = dt.datetime(2024, 4, 29)  # has to be a Monday
 
 
 def plot_staffed_vs_required(staffed: list[int], requirements: list[list[int]]):
@@ -28,10 +29,15 @@ def plot_staffed_vs_required(staffed: list[int], requirements: list[list[int]]):
             name='Required'
         )
     )
+    TICKS_HOURS_STEP = 6
+    TICKS_PER_DAY = HOURS_IN_DAY // TICKS_HOURS_STEP
     fig.update_xaxes(
         tickmode='array',
-        tickvals=list(range(0, 7*24+1, 6)),
-        ticktext=[f"{weekdays[(6*i)//24%7]} {(6*i)%24}:00" for i in range(7*4+1)],
+        tickvals=list(range(0, DAYS_IN_WEEK*HOURS_IN_DAY+1, TICKS_HOURS_STEP)),
+        ticktext=[
+            f"{weekdays[(TICKS_HOURS_STEP*i)//HOURS_IN_DAY%DAYS_IN_WEEK]} {(TICKS_HOURS_STEP*i)%HOURS_IN_DAY}:00" 
+            for i in range(DAYS_IN_WEEK*TICKS_PER_DAY+1)
+        ],
         tickangle=80
     )
     fig.update_layout(
@@ -43,7 +49,6 @@ def plot_staffed_vs_required(staffed: list[int], requirements: list[list[int]]):
 
 
 def plot_timeline(selected_shifts: list[tuple[dt.time, dt.time, list[str]]]):
-    start_date = dt.datetime(2024, 4, 29)
     weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     data = []
     for i, (start_time, end_time, days_off) in enumerate(selected_shifts):
@@ -69,12 +74,14 @@ def plot_timeline(selected_shifts: list[tuple[dt.time, dt.time, list[str]]]):
     for i in range(DAYS_IN_WEEK + 1):
         fig.add_vline(x=start_date + dt.timedelta(days=i),  line_color='black')
     fig.update_yaxes(categoryorder='array', categoryarray=list(reversed(fig.data[0].y)))
+    TICKS_HOURS_STEP = 6
+    TICKS_PER_DAY = HOURS_IN_DAY // TICKS_HOURS_STEP
     fig.update_xaxes(
         tickmode='array',
-        tickvals=[start_date + dt.timedelta(hours=6*i) for i in range(7*4+1)],
+        tickvals=[start_date + dt.timedelta(hours=TICKS_HOURS_STEP*i) for i in range(DAYS_IN_WEEK*TICKS_PER_DAY+1)],
         ticktext=[
-            f"{weekdays[(6*i)//HOURS_IN_DAY%DAYS_IN_WEEK]} {(6*i)%HOURS_IN_DAY}:00" 
-            for i in range(DAYS_IN_WEEK*4+1)
+            f"{weekdays[(TICKS_HOURS_STEP*i)//HOURS_IN_DAY%DAYS_IN_WEEK]} {(TICKS_HOURS_STEP*i)%HOURS_IN_DAY}:00" 
+            for i in range(DAYS_IN_WEEK*TICKS_PER_DAY+1)
         ],
         tickangle=80
     )
@@ -114,12 +121,28 @@ if __name__ == '__main__':
     filepath_input = 'input.xlsx'
     filepath_output = 'output.xlsx'
 
-    shift_types, requirements = read_input(filepath_input)
-    staffed, selected_shifts = solver.recommend_shifts(shift_types, requirements)
-    fig_staffed_vs_required = plot_staffed_vs_required(staffed, requirements)
-    fig_timeline = plot_timeline(selected_shifts)
-    fig_staffed_vs_required.write_html('staffed_vs_required.html', auto_open=True)
-    fig_timeline.write_html('timeline.html', auto_open=True)
+    try:
+        shift_types, requirements = read_input(filepath_input)
+    except Exception as e:
+        print(f"Error reading input: {e}")
+        exit()
+    
+    try:
+        staffed, selected_shifts = solver.recommend_shifts(shift_types, requirements)
+        if not selected_shifts:
+            print("No solution found.")
+            exit()
+    except Exception as e:
+        print(f"Error solving the problem: {e}")
+        exit()
+    
+    try:
+        fig_staffed_vs_required = plot_staffed_vs_required(staffed, requirements)
+        fig_timeline = plot_timeline(selected_shifts)
+        fig_staffed_vs_required.write_html('staffed_vs_required.html', auto_open=True)
+        fig_timeline.write_html('timeline.html', auto_open=True)
+    except Exception as e:
+        print(f"Error plotting the results: {e}")
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -147,7 +170,7 @@ if __name__ == '__main__':
     weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     requirements_flattened = [item for row in requirements for item in row]
     for i in range(len(staffed)):
-        ws.append([weekdays[i//24], dt.time(i%24).strftime('%H:%M'), staffed[i], requirements_flattened[i]])
+        ws.append([weekdays[i//HOURS_IN_DAY], dt.time(i%HOURS_IN_DAY).strftime('%H:%M'), staffed[i], requirements_flattened[i]])
     for i in range(1, len(staffed)+2):
         for j in range(1, 5):
             ws.cell(row=i, column=j).font = openpyxl.styles.Font(bold=i == 1)
@@ -163,4 +186,9 @@ if __name__ == '__main__':
             ws.cell(row=i, column=j).alignment = openpyxl.styles.Alignment(horizontal='center')
             ws.column_dimensions[openpyxl.utils.get_column_letter(j)].width = 10
     
-    wb.save(filepath_output)
+    try:
+        wb.save(filepath_output)
+    except Exception as e:
+        print(f"Error saving the output: {e}")
+        print("Please close the output file if it is open.")
+        exit()
