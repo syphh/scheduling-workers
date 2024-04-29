@@ -1,7 +1,7 @@
 # Scheduling workers
 
-Given hourly worker requirements for a whole week and possible shift types (start hour, end hour, number of days off per week), we want to find the number of workers we need to assign to each shift type and chosen days off to be as close as possible to requirements.__
-Solving this problem manually would take hours, but can be done in seconds thanks to constraint programming!__
+Given hourly worker requirements for a whole week and possible shift types (start hour, end hour, number of days off per week), we want to find the number of workers we need to assign to each shift type and chosen days off to be as close as possible to requirements. <br>
+Solving this problem manually would take hours, but can be done in seconds thanks to constraint programming! <br>
 By using Python and or-tools library, we implemented the mathematical model below:
 
 <img src="model.jpg" width="800"/>
